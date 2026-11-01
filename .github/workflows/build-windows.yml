@@ -1,0 +1,52 @@
+
+name: Build llama-quik Windows CUDA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install CUDA
+        uses: Jimver/cuda-toolkit@v0.2.36
+        with:
+          cuda: '13.2.0'
+          method: network
+          sub-packages: '["nvcc","cudart","cublas","cublas_dev","crt","nvvm","nvptxcompiler","visual_studio_integration"]'
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        shell: cmd
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -A x64 -DGGML_CUDA=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON
+
+      - name: Build
+        run: |
+          cmake --build build --config Release --target llama-server --parallel 4
+
+      - name: Collect files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist
+          Copy-Item build/bin/Release/* dist/ -Recurse
+
+          $cudaBin = "$env:CUDA_PATH/bin"
+          Get-ChildItem $cudaBin -Filter "*.dll" |
+            Where-Object { $_.Name -match '^(cudart|cublas|nvJitLink)' } |
+            Copy-Item -Destination dist
+
+      - name: Upload EXE and DLLs
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-quik-windows-cuda
+          path: dist/*
+          retention-days: 7
