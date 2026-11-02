@@ -19,7 +19,7 @@ jobs:
         with:
           cuda: '13.2.0'
           method: network
-          sub-packages: '["nvcc","cudart","cublas","cublas_dev","crt","nvvm","nvptxcompiler","visual_studio_integration"]'
+          
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
